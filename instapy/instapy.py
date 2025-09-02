@@ -18,7 +18,7 @@ from sys import platform
 
 import requests
 from selenium import webdriver
-from selenium.webdriver import DesiredCapabilities
+# DesiredCapabilities is deprecated in Selenium 4.x, using Options instead
 from selenium.webdriver.common.by import By
 
 try:
@@ -408,9 +408,11 @@ class InstaPy:
         if selenium_driver:
             self.browser = selenium_driver
         else:
+            # Create Firefox options for Selenium 4.x compatibility
+            firefox_options = webdriver.FirefoxOptions()
             self.browser = webdriver.Remote(
                 command_executor=selenium_url,
-                desired_capabilities=DesiredCapabilities.FIREFOX,
+                options=firefox_options,
             )
 
         # convert_selenium_browser(selenium_driver)
@@ -465,7 +467,7 @@ class InstaPy:
             # FF session shows a different page that interrupts the normal flow.
             self.logger.warning(
                 "Unable to save account progress, skipping data update \n\t{}".format(
-                    str(e).encode("utf-8")
+                    str(e)
                 )
             )
 

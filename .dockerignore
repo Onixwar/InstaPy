@@ -1,0 +1,50 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README*.md
+docs/
+*.md
+
+# Scripts
+install_*.sh
+check_compatibility.py
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Virtual environments
+instapy_env/
+venv/
+env/
+
+# Logs and databases
+logs/
+db/
+*.log
+*.db
+
+# Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp

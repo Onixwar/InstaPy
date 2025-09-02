@@ -5,18 +5,32 @@ By design, import no any other local module inside this file.
 Vice verse, it'd produce circular dependent imports.
 """
 # import built-in & third-party modules
-from sys import platform
+import sys
+import platform
 from os import environ as environmental_variables
-from os.path import join as join_path
+from os.path import join as join_path, expanduser
 
 
 WORKSPACE = {
     "name": "InstaPy",
     "path": environmental_variables.get("INSTAPY_WORKSPACE"),
 }
-OS_ENV = (
-    "windows" if platform == "win32" else "osx" if platform == "darwin" else "linux"
-)
+
+# Improved OS detection for Linux
+def get_os_env():
+    """Get OS environment with better Linux detection"""
+    system = platform.system().lower()
+    if system == "windows":
+        return "windows"
+    elif system == "darwin":
+        return "osx"
+    elif system == "linux":
+        return "linux"
+    else:
+        # Fallback for other Unix-like systems
+        return "linux"
+
+OS_ENV = get_os_env()
 
 
 def localize_path(*args):
@@ -25,8 +39,11 @@ def localize_path(*args):
     if WORKSPACE["path"]:
         path = join_path(WORKSPACE["path"], *args)
         return path
-
     else:
+        # Default to user home directory on Linux
+        if OS_ENV == "linux":
+            home_dir = expanduser("~")
+            return join_path(home_dir, "InstaPy", *args)
         return None
 
 

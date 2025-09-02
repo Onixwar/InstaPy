@@ -2,13 +2,15 @@
 import os
 import zipfile
 import shutil
+import platform
 
 from os.path import sep
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.options import Options as Firefox_Options
+from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.webdriver import Remote
-from webdriverdownloader import GeckoDriverDownloader
+from webdriver_manager.firefox import GeckoDriverManager
 
 # import InstaPy modules
 from .util import interruption_handler
@@ -27,19 +29,24 @@ from selenium.common.exceptions import UnexpectedAlertPresentException
 
 
 def get_geckodriver():
-    # prefer using geckodriver from path
-    gecko_path = shutil.which("geckodriver") or shutil.which("geckodriver.exe")
+    """Get geckodriver path, prefer system path, fallback to webdriver-manager"""
+    # prefer using geckodriver from system path
+    gecko_path = shutil.which("geckodriver")
     if gecko_path:
         return gecko_path
 
-    asset_path = use_assets()
-    gdd = GeckoDriverDownloader(asset_path, asset_path)
-    # skips download if already downloaded
-    sym_path = gdd.download_and_install()[1]
-    return sym_path
+    # fallback to webdriver-manager for automatic download
+    try:
+        gecko_path = GeckoDriverManager().install()
+        return gecko_path
+    except Exception:
+        # last resort: use assets folder
+        asset_path = use_assets()
+        return os.path.join(asset_path, "geckodriver")
 
 
 def create_firefox_extension():
+    """Create Firefox extension for hiding automation"""
     ext_path = os.path.abspath(os.path.dirname(__file__) + sep + "firefox_extension")
     # safe into assets folder
     zip_file = use_assets() + sep + "extension.xpi"
@@ -84,10 +91,10 @@ def set_selenium_local_session(
         firefox_profile = webdriver.FirefoxProfile()
 
     if browser_executable_path is not None:
-        firefox_options.binary = browser_executable_path
+        firefox_options.binary_location = browser_executable_path
 
     # set "info" by default
-    # set "trace" for debubging, Development only
+    # set "trace" for debugging, Development only
     firefox_options.log.level = geckodriver_log_level
 
     # set English language
@@ -120,18 +127,24 @@ def set_selenium_local_session(
 
     # prefer user path before downloaded one
     driver_path = geckodriver_path or get_geckodriver()
+    
+    # Create service for Selenium 4.x compatibility
+    service = FirefoxService(
+        executable_path=driver_path,
+        log_path=geckodriver_log
+    )
+    
     browser = webdriver.Firefox(
         firefox_profile=firefox_profile,
-        executable_path=driver_path,
-        log_path=geckodriver_log,
+        service=service,
         options=firefox_options,
     )
 
     # add extension to hide selenium
-    browser.install_addon(create_firefox_extension(), temporary=True)
-
-    # converts to custom browser
-    # browser = convert_selenium_browser(browser)
+    try:
+        browser.install_addon(create_firefox_extension(), temporary=True)
+    except Exception as e:
+        logger.warning(f"Could not install Firefox extension: {e}")
 
     # authenticate with popup alert window
     if proxy_username and proxy_password:
@@ -146,7 +159,7 @@ def set_selenium_local_session(
     except UnexpectedAlertPresentException as exc:
         logger.exception(
             "Unexpected alert on resizing web browser!\n\t"
-            "{}".format(str(exc).encode("utf-8"))
+            "{}".format(str(exc))
         )
         close_browser(browser, False, logger)
         return browser, "Unexpected alert on browser resize"
@@ -171,7 +184,7 @@ def proxy_authentication(browser, logger, proxy_username, proxy_password):
         # sleep(1) is enough, sleep(2) is to make sure we
         # give time to the popup windows
         sleep(2)
-        alert_popup = browser.switch_to_alert()
+        alert_popup = browser.switch_to.alert
         alert_popup.send_keys(
             "{username}{tab}{password}{tab}".format(
                 username=proxy_username, tab=Keys.TAB, password=proxy_password
@@ -191,7 +204,7 @@ def close_browser(browser, threaded_session, logger):
             if isinstance(exc, WebDriverException):
                 logger.exception(
                     "Error occurred while deleting cookies "
-                    "from web browser!\n\t{}".format(str(exc).encode("utf-8"))
+                    "from web browser!\n\t{}".format(str(exc))
                 )
 
         # close web browser
@@ -201,7 +214,7 @@ def close_browser(browser, threaded_session, logger):
             if isinstance(exc, WebDriverException):
                 logger.exception(
                     "Error occurred while "
-                    "closing web browser!\n\t{}".format(str(exc).encode("utf-8"))
+                    "closing web browser!\n\t{}".format(str(exc))
                 )
 
 
@@ -277,8 +290,8 @@ class custom_browser(Remote):
 
     def find_element_by_xpath(self, *args, **kwargs):
         """example usage of hooking into built in functions"""
-        rv = super(custom_browser, self).find_element_by_xpath(*args, **kwargs)
-        return rv
+        # Updated for Selenium 4.x compatibility
+        return self.find_element("xpath", *args, **kwargs)
 
     def wait_for_valid_connection(self, username, logger):
         counter = 0

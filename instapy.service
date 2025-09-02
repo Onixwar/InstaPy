@@ -1,0 +1,37 @@
+[Unit]
+Description=InstaPy Instagram Automation Service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=instapy
+Group=instapy
+WorkingDirectory=/opt/instapy
+Environment=DISPLAY=:99
+Environment=PYTHONUNBUFFERED=1
+
+# Start Xvfb virtual display
+ExecStartPre=/usr/bin/Xvfb :99 -screen 0 1024x768x24 -ac
+ExecStart=/opt/instapy/instapy_env/bin/python /opt/instapy/quickstart.py
+
+# Restart configuration
+Restart=always
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/instapy/logs /opt/instapy/db
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=instapy
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  instapy:
+    build: .
+    container_name: instapy
+    environment:
+      - DISPLAY=:99
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./logs:/app/logs
+      - ./db:/app/db
+      - ./config:/app/config
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    
+  # Optional: Add a web interface service
+  # web:
+  #   image: nginx:alpine
+  #   container_name: instapy-web
+  #   ports:
+  #     - "8080:80"
+  #   volumes:
+  #     - ./web:/usr/share/nginx/html
+  #   depends_on:
+  #     - instapy
+  #   restart: unless-stopped
